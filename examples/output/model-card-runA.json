@@ -1,0 +1,349 @@
+{
+  "schema": "cross-species-model-card/1.0",
+  "card_id": "card-0012",
+  "run_id": "run-0009",
+  "published_at": "2026-09-15T08:00:00.000Z",
+  "published_event": "evt-000023",
+  "validation_level": "independent_replication",
+  "validation": {
+    "label": "独立实验室复现（independent_replication）",
+    "is_verified_biological_fact": false,
+    "note": "验证等级只覆盖所列证据；未覆盖的物种/组织外推仍按探索线索处理。"
+  },
+  "intended_uses": [
+    "跨物种细胞类型假设生成",
+    "指导后续谱系追踪实验的优先级排序"
+  ],
+  "out_of_scope_uses": [
+    "临床诊断或预后判断",
+    "将嵌入空间相邻表述为已证实的细胞同源",
+    "外推到未覆盖物种/组织/发育阶段"
+  ],
+  "scope": {
+    "species": [
+      "Amphimedon queenslandica",
+      "Caenorhabditis elegans",
+      "Xenopus tropicalis",
+      "Homo sapiens"
+    ],
+    "tissues": [
+      "幼虫全细胞",
+      "L2 幼虫全细胞",
+      "尾芽期胚胎",
+      "外周血与脑（多组织汇总）"
+    ],
+    "labs": [
+      "Ludwig 海洋生物学站",
+      "MRC 线虫库",
+      "图宾根发育基因组学组",
+      "人类细胞图谱合作中心"
+    ],
+    "human_subject_data": true,
+    "most_restrictive_access": "controlled",
+    "contains_withdrawn_data": true,
+    "annotation_superseded": true
+  },
+  "datasets": [
+    {
+      "dataset_id": "dataset-0002",
+      "lab": "Ludwig 海洋生物学站",
+      "species": {
+        "scientific_name": "Amphimedon queenslandica",
+        "common_name": "海绵",
+        "taxonomy_id": "NCBI:400915"
+      },
+      "tissue": "幼虫全细胞",
+      "sample_consent": "unrestricted_research",
+      "human_subject": false,
+      "access_tier": "public",
+      "access_restrictions": [],
+      "quality_control": {
+        "passed": true,
+        "checks": [
+          "每簇细胞数≥500",
+          "doublet 比例<5%",
+          "线粒体读数<10%"
+        ]
+      },
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "c24498a41595f5ca7f5291edb5c1aff4a67b08515a098c9d5530d74637fdc5ad"
+      },
+      "withdrawn": {
+        "reason": "提供方 2026-09 复核撤回部分样本授权"
+      }
+    },
+    {
+      "dataset_id": "dataset-0003",
+      "lab": "MRC 线虫库",
+      "species": {
+        "scientific_name": "Caenorhabditis elegans",
+        "common_name": "线虫",
+        "taxonomy_id": "NCBI:6239"
+      },
+      "tissue": "L2 幼虫全细胞",
+      "sample_consent": "unrestricted_research",
+      "human_subject": false,
+      "access_tier": "public",
+      "access_restrictions": [],
+      "quality_control": {
+        "passed": true,
+        "checks": [
+          "每簇细胞数≥300",
+          "doublet 比例<4%"
+        ]
+      },
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "1c5ef29b66f489fc5c4d48d8f2e5aaa42fe6ad4c30bcc146edb733bd437a8719"
+      }
+    },
+    {
+      "dataset_id": "dataset-0004",
+      "lab": "图宾根发育基因组学组",
+      "species": {
+        "scientific_name": "Xenopus tropicalis",
+        "common_name": "热带爪蟾",
+        "taxonomy_id": "NCBI:8364"
+      },
+      "tissue": "尾芽期胚胎",
+      "sample_consent": "unrestricted_research",
+      "human_subject": false,
+      "access_tier": "public",
+      "access_restrictions": [],
+      "quality_control": {
+        "passed": true,
+        "checks": [
+          "每簇细胞数≥500",
+          "doublet 比例<6%"
+        ],
+        "notes": "批次效应按发育阶段校正"
+      },
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "0ffb3a466cd3c4117cf24257ddfceccee0f049e7f40475d73e7dc794a978f65c"
+      }
+    },
+    {
+      "dataset_id": "dataset-0005",
+      "lab": "人类细胞图谱合作中心",
+      "species": {
+        "scientific_name": "Homo sapiens",
+        "common_name": "人类",
+        "taxonomy_id": "NCBI:9606"
+      },
+      "tissue": "外周血与脑（多组织汇总）",
+      "sample_consent": "controlled_access",
+      "human_subject": true,
+      "access_tier": "controlled",
+      "access_restrictions": [
+        "仅 DAC-2026-014 授权项目可用",
+        "禁止个体层面数据导出",
+        "禁止流向未授权项目"
+      ],
+      "quality_control": {
+        "passed": true,
+        "checks": [
+          "供体去标识化复核",
+          "每簇细胞数≥800",
+          "doublet 比例<3%"
+        ]
+      },
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "f2df45199b29ceb7fe74d3c2c204f3494390c19c0982d8e0522a91a93a9fd235"
+      }
+    }
+  ],
+  "vocabulary": {
+    "vocabulary_id": "vocab-0006",
+    "name": "Ensembl 四物种基因词表",
+    "version": "2024-03",
+    "source_release": "Ensembl 112",
+    "checksum": {
+      "algorithm": "sha256",
+      "value": "e0f5f66e9e27243ca31cf2f55f71c113f331ad9fc6e6d108d4d50ee35a991ba1"
+    },
+    "superseded_by": "vocab-0016"
+  },
+  "orthology": {
+    "orthology_id": "orthology-0007",
+    "name": "四物种同源组（一爪一妻映射）",
+    "mapping_version": "2024-03-compara",
+    "source": "Ensembl Compara release 112",
+    "checksum": {
+      "algorithm": "sha256",
+      "value": "2031e80424253e3c5e7eb1ba5e467664cb618f219a0f6815d648592e9147ab28"
+    },
+    "superseded_by": "orthology-0017"
+  },
+  "reproduction": {
+    "recipe": [
+      "按 code.repository@a1b2c2d9（sha256:8d8093c3a64d601470f46df23a21b915a8ceaf61e4b9386a79f670b0a40026ae）取得训练代码",
+      "取得词表 Ensembl 四物种基因词表 2024-03（Ensembl 112，校验值 e0f5f66e9e27243ca31cf2f55f71c113f331ad9fc6e6d108d4d50ee35a991ba1）",
+      "取得同源映射 四物种同源组（一爪一妻映射） 2024-03-compara（Ensembl Compara release 112，校验值 2031e80424253e3c5e7eb1ba5e467664cb618f219a0f6815d648592e9147ab28）",
+      "按下表数据集校验值获取数据；受控数据需凭项目授权访问，人类原始数据不得跨项目流动",
+      "以配置校验值 779f259bd79b1ef071b7a74c66afa2ec9cb4ae6c267bacd6b9b3fbb3704cb004 锁定训练配置，以权重校验值 a4d45286552da9da0e7d9290078220b9a0bdbae3b5b83c8d99f8fdbb2dbef5d6 校验产物",
+      "长训练按分片检查点恢复；分片回调必须复用同一幂等键"
+    ],
+    "code": {
+      "repository": "git+https://git.example.institute/cross-species/cell-embed",
+      "commit": "a1b2c2d9",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "8d8093c3a64d601470f46df23a21b915a8ceaf61e4b9386a79f670b0a40026ae"
+      }
+    },
+    "config_checksum": {
+      "algorithm": "sha256",
+      "value": "779f259bd79b1ef071b7a74c66afa2ec9cb4ae6c267bacd6b9b3fbb3704cb004"
+    },
+    "weights_checksum": {
+      "algorithm": "sha256",
+      "value": "a4d45286552da9da0e7d9290078220b9a0bdbae3b5b83c8d99f8fdbb2dbef5d6"
+    },
+    "embedding": {
+      "embedding_id": "emb-0010",
+      "checksum": {
+        "algorithm": "sha256",
+        "value": "44f8c61c43c2c80c09f2a7bcc575cd1219532d1178aebbe2c94a4d14fcbd7422"
+      },
+      "dimensionality": 256
+    }
+  },
+  "claims": [
+    {
+      "claim_id": "claim-0011",
+      "statement": "海绵领细胞与人类小胶质样细胞在共嵌入空间相邻，提示免疫效应样细胞的深谱系对应可能",
+      "level": "independent_replication",
+      "recorded_by": "联合实验室-A 组",
+      "caveats": [
+        "空间相邻不等于同源",
+        "仅覆盖四物种与有限组织",
+        "基因词表与同源组为 2024-03 冻结版"
+      ],
+      "history": [
+        {
+          "event_id": "evt-000020",
+          "type": "CLAIM_RECORDED",
+          "at": "2026-09-15T08:00:00.000Z"
+        },
+        {
+          "event_id": "evt-000021",
+          "type": "CLAIM_VALIDATED",
+          "at": "2026-09-15T08:00:00.000Z",
+          "from_to": [
+            "exploratory",
+            "computational_replication"
+          ],
+          "method": "独立留出批次上重算嵌入，最近邻标签一致率 0.81",
+          "independent": false,
+          "evidence": {
+            "description": "留出批次复算报告",
+            "artifact_uri": "s3://cell-atlas-demo/reports/replica-internal.pdf",
+            "checksum": {
+              "algorithm": "sha256",
+              "value": "c84f3235cb185533a8280c01265a9fb7dd5857157b7e09d4fdd7afb32351a26b"
+            }
+          }
+        },
+        {
+          "event_id": "evt-000022",
+          "type": "CLAIM_VALIDATED",
+          "at": "2026-09-15T08:00:00.000Z",
+          "from_to": [
+            "computational_replication",
+            "independent_replication"
+          ],
+          "method": "B 组用自有预处理管线在相同冻结词表/同源组上重复",
+          "independent": true,
+          "evidence": {
+            "description": "独立实验室复现报告",
+            "checksum": {
+              "algorithm": "sha256",
+              "value": "a35e79debd99eea8033a4a50c5d13893bf44743134b22190ac4cde54be0f886a"
+            }
+          }
+        }
+      ],
+      "markers": [
+        {
+          "kind": "annotation_upgraded",
+          "reason": "Ensembl 112→115 基因模型更新：海绵/爪蟾基因结构修订约 4%",
+          "new_ref": {
+            "aggregate_type": "gene_vocabulary",
+            "aggregate_id": "vocab-0016",
+            "checksum": {
+              "algorithm": "sha256",
+              "value": "ba805460fcf439514e328a7975eac170bac94275bb70f7bb49b8b54b75a1ee12"
+            }
+          },
+          "since_event": "evt-000034",
+          "at": "2026-09-15T08:00:00.000Z"
+        },
+        {
+          "kind": "annotation_upgraded",
+          "reason": "Compara 112→115 同源关系重算：旧图差异应先归因注释版本",
+          "new_ref": {
+            "aggregate_type": "orthology_set",
+            "aggregate_id": "orthology-0017",
+            "checksum": {
+              "algorithm": "sha256",
+              "value": "6019d2bc6da77f4c180002aa4ecb7354ad354d382a86e80fb87ff8c5e107f14f"
+            }
+          },
+          "since_event": "evt-000035",
+          "at": "2026-09-15T08:00:00.000Z"
+        },
+        {
+          "kind": "source_withdrawn",
+          "dataset_id": "dataset-0002",
+          "reason": "提供方 2026-09 复核撤回部分样本授权",
+          "since_event": "evt-000036",
+          "at": "2026-09-15T08:00:00.000Z"
+        }
+      ]
+    }
+  ],
+  "warnings": [
+    "每物种组织覆盖有限",
+    "1:1 同源策略剔除了基因家族扩张物种的大量基因"
+  ],
+  "markers": [
+    {
+      "kind": "annotation_upgraded",
+      "reason": "Ensembl 112→115 基因模型更新：海绵/爪蟾基因结构修订约 4%",
+      "new_ref": {
+        "aggregate_type": "gene_vocabulary",
+        "aggregate_id": "vocab-0016",
+        "checksum": {
+          "algorithm": "sha256",
+          "value": "ba805460fcf439514e328a7975eac170bac94275bb70f7bb49b8b54b75a1ee12"
+        }
+      },
+      "since_event": "evt-000034",
+      "at": "2026-09-15T08:00:00.000Z"
+    },
+    {
+      "kind": "annotation_upgraded",
+      "reason": "Compara 112→115 同源关系重算：旧图差异应先归因注释版本",
+      "new_ref": {
+        "aggregate_type": "orthology_set",
+        "aggregate_id": "orthology-0017",
+        "checksum": {
+          "algorithm": "sha256",
+          "value": "6019d2bc6da77f4c180002aa4ecb7354ad354d382a86e80fb87ff8c5e107f14f"
+        }
+      },
+      "since_event": "evt-000035",
+      "at": "2026-09-15T08:00:00.000Z"
+    },
+    {
+      "kind": "source_withdrawn",
+      "dataset_id": "dataset-0002",
+      "reason": "提供方 2026-09 复核撤回部分样本授权",
+      "since_event": "evt-000036",
+      "at": "2026-09-15T08:00:00.000Z"
+    }
+  ]
+}

@@ -1,6 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://institute.example/cross-species/domain.schema.json",
   "title": "跨物种细胞模型登记领域事件",
+  "description": "所有跨物种分析流程共用同一事件信封：登记、冻结、训练、嵌入、主张、验证、撤回、升级、模型卡与图表溯源均为不可变事件。",
   "type": "object",
   "required": [
     "event_id",
@@ -9,7 +11,8 @@
     "aggregate_id",
     "occurred_at",
     "version",
-    "summary"
+    "summary",
+    "payload"
   ],
   "properties": {
     "event_id": {
@@ -19,20 +22,36 @@
     "event_type": {
       "type": "string",
       "enum": [
+        "ANALYSIS_REGISTERED",
         "DATASET_REGISTERED",
         "VOCABULARY_FROZEN",
+        "ORTHOLOGY_FROZEN",
+        "ACCESS_AUTHORIZED",
+        "RUN_REGISTERED",
+        "SHARD_PROGRESSED",
         "RUN_COMPLETED",
+        "EMBEDDING_PUBLISHED",
+        "CLAIM_RECORDED",
         "CLAIM_VALIDATED",
+        "MODEL_CARD_PUBLISHED",
+        "FIGURE_PUBLISHED",
+        "ANNOTATION_UPGRADED",
         "SOURCE_WITHDRAWN"
       ]
     },
     "aggregate_type": {
       "type": "string",
       "enum": [
+        "analysis_registration",
         "dataset_release",
         "gene_vocabulary",
+        "orthology_set",
+        "access_grant",
         "model_run",
-        "biological_claim"
+        "embedding_output",
+        "biological_claim",
+        "model_card",
+        "figure"
       ]
     },
     "aggregate_id": {
@@ -45,12 +64,703 @@
     },
     "version": {
       "type": "integer",
-      "minimum": 1
+      "minimum": 1,
+      "description": "该聚合上事件的单调递增序号，从 1 开始。"
     },
     "summary": {
       "type": "string",
       "minLength": 1
+    },
+    "idempotency_key": {
+      "type": "string",
+      "minLength": 1,
+      "description": "回调幂等键。同一 (event_type, aggregate_id, idempotency_key) 重放返回既有事件，不产生第二个运行。"
+    },
+    "causation_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "correlation_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "producer": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 }
+      },
+      "required": ["name", "version"]
+    },
+    "payload": {
+      "type": "object",
+      "description": "事件载荷，结构随 event_type 而定，见 allOf 中的 if/then 约束。"
     }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "$defs": {
+    "checksum": {
+      "type": "object",
+      "description": "内容校验值，用于锁定词表、配置、代码、权重与产物。",
+      "required": ["algorithm", "value"],
+      "properties": {
+        "algorithm": { "type": "string", "enum": ["sha256"] },
+        "value": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "小写十六进制 SHA-256 摘要。"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ref": {
+      "type": "object",
+      "required": ["aggregate_type", "aggregate_id"],
+      "properties": {
+        "aggregate_type": { "type": "string" },
+        "aggregate_id": { "type": "string", "minLength": 1 },
+        "version": { "type": "integer", "minimum": 1 },
+        "checksum": { "$ref": "#/$defs/checksum" }
+      },
+      "additionalProperties": false
+    },
+    "access_tier": {
+      "type": "string",
+      "enum": ["public", "embargoed", "controlled", "restricted"],
+      "description": "public=公开；embargoed=保密期内仅授权项目可见；controlled=受控访问（如人类原始数据）；restricted=禁止跨项目流动。"
+    },
+    "consent": {
+      "type": "string",
+      "enum": [
+        "unrestricted_research",
+        "controlled_access",
+        "population_restricted",
+        "no_secondary_use",
+        "unknown"
+      ]
+    },
+    "validation_level": {
+      "type": "string",
+      "enum": [
+        "exploratory",
+        "computational_replication",
+        "independent_replication",
+        "experimental_validation"
+      ],
+      "description": "exploratory=探索线索（不得表述为已验证生物学事实）；computational_replication=独立数据上的计算复现；independent_replication=独立实验室重复；experimental_validation=后续实验验证。"
+    },
+    "qc": {
+      "type": "object",
+      "required": ["passed", "checks"],
+      "properties": {
+        "passed": { "type": "boolean" },
+        "checks": { "type": "array", "items": { "type": "string" } },
+        "notes": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "embargo": {
+      "type": "object",
+      "required": ["owner_project"],
+      "properties": {
+        "owner_project": { "type": "string", "minLength": 1 },
+        "visible_to_projects": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": []
+        },
+        "embargo_until": { "type": "string", "format": "date-time" }
+      },
+      "additionalProperties": false
+    },
+    "affected_refs": {
+      "type": "object",
+      "required": ["affected_run_refs", "affected_claim_refs"],
+      "properties": {
+        "affected_run_refs": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "affected_claim_refs": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "affected_figure_refs": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "retained_history_note": {
+          "type": "string",
+          "description": "必须声明：已发表历史保留可复查，仅打标记，不删除、不覆写。"
+        }
+      },
+      "additionalProperties": false
+    },
+    "payload_dataset_registered": {
+      "type": "object",
+      "required": [
+        "lab",
+        "species",
+        "tissue",
+        "sample_consent",
+        "human_subject",
+        "access_tier",
+        "quality_control",
+        "checksum"
+      ],
+      "properties": {
+        "lab": { "type": "string", "minLength": 1 },
+        "species": {
+          "type": "object",
+          "required": ["scientific_name"],
+          "properties": {
+            "scientific_name": { "type": "string", "minLength": 1 },
+            "common_name": { "type": "string" },
+            "taxonomy_id": { "type": "string" }
+          },
+          "additionalProperties": false
+        },
+        "tissue": { "type": "string", "minLength": 1 },
+        "sample_consent": { "$ref": "#/$defs/consent" },
+        "human_subject": { "type": "boolean" },
+        "access_tier": { "$ref": "#/$defs/access_tier" },
+        "access_restrictions": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "quality_control": { "$ref": "#/$defs/qc" },
+        "source_uri": { "type": "string" },
+        "checksum": { "$ref": "#/$defs/checksum" }
+      },
+      "additionalProperties": false
+    },
+    "payload_vocabulary_frozen": {
+      "type": "object",
+      "required": ["name", "vocab_version", "source_release", "frozen_at", "checksum"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "vocab_version": { "type": "string", "minLength": 1 },
+        "source_release": {
+          "type": "string",
+          "description": "上游发布版本，例如 Ensembl 112；复现失败时据此区分差异来自词表还是模型。"
+        },
+        "frozen_at": { "type": "string", "format": "date-time" },
+        "species_coverage": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "checksum": { "$ref": "#/$defs/checksum" },
+        "supersedes": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "payload_orthology_frozen": {
+      "type": "object",
+      "required": ["name", "mapping_version", "source", "frozen_at", "checksum", "vocabulary_refs"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "mapping_version": { "type": "string", "minLength": 1 },
+        "source": {
+          "type": "string",
+          "description": "同源映射来源，例如 Ensembl Compara / HomoloGene，及具体发布版本。"
+        },
+        "frozen_at": { "type": "string", "format": "date-time" },
+        "mapping_policy": { "type": "string" },
+        "vocabulary_refs": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ref" },
+          "minItems": 1
+        },
+        "checksum": { "$ref": "#/$defs/checksum" },
+        "supersedes": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "payload_analysis_registered": {
+      "type": "object",
+      "required": ["title", "lead_lab", "planned_species", "intended_use", "registered_at"],
+      "properties": {
+        "title": { "type": "string", "minLength": 1 },
+        "lead_lab": { "type": "string", "minLength": 1 },
+        "planned_species": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1
+        },
+        "intended_use": { "type": "string", "minLength": 1 },
+        "hypotheses": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "registered_at": { "type": "string", "format": "date-time" }
+      },
+      "additionalProperties": false
+    },
+    "payload_access_authorized": {
+      "type": "object",
+      "description": "人类原始数据等受控资源对具体项目的授权；无授权项目不得在运行中引用。",
+      "required": ["project_id", "dataset_refs", "granted_by", "granted_at"],
+      "properties": {
+        "project_id": { "type": "string", "minLength": 1 },
+        "dataset_refs": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ref" },
+          "minItems": 1
+        },
+        "granted_by": { "type": "string", "minLength": 1 },
+        "granted_at": { "type": "string", "format": "date-time" },
+        "expires_at": { "type": "string", "format": "date-time" }
+      },
+      "additionalProperties": false
+    },
+    "payload_run_registered": {
+      "type": "object",
+      "required": [
+        "analysis_ref",
+        "lab",
+        "project_id",
+        "dataset_refs",
+        "vocabulary_ref",
+        "orthology_ref",
+        "training_config",
+        "code",
+        "shard_total"
+      ],
+      "properties": {
+        "analysis_ref": { "type": "string", "minLength": 1 },
+        "lab": { "type": "string", "minLength": 1 },
+        "project_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "发起训练的项目；受控数据访问授权按此项目校验。"
+        },
+        "dataset_refs": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ref" },
+          "minItems": 1
+        },
+        "vocabulary_ref": { "$ref": "#/$defs/ref" },
+        "orthology_ref": { "$ref": "#/$defs/ref" },
+        "training_config": {
+          "type": "object",
+          "required": ["checksum"],
+          "properties": {
+            "checksum": { "$ref": "#/$defs/checksum" },
+            "hyperparameters_uri": { "type": "string" }
+          },
+          "additionalProperties": false
+        },
+        "code": {
+          "type": "object",
+          "required": ["repository", "commit", "checksum"],
+          "properties": {
+            "repository": { "type": "string" },
+            "commit": { "type": "string" },
+            "checksum": { "$ref": "#/$defs/checksum" }
+          },
+          "additionalProperties": false
+        },
+        "shard_total": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "长训练分片总数；按分片回调恢复。"
+        },
+        "embargo": { "$ref": "#/$defs/embargo" }
+      },
+      "additionalProperties": false
+    },
+    "payload_shard_progressed": {
+      "type": "object",
+      "required": ["shard_index", "state", "checkpoint_checksum"],
+      "properties": {
+        "shard_index": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "从 0 开始；重复回调同一分片不产生第二个运行，也不重复计数。"
+        },
+        "state": {
+          "type": "string",
+          "enum": ["started", "checkpoint", "completed"]
+        },
+        "checkpoint_checksum": { "$ref": "#/$defs/checksum" },
+        "resumes_from_checkpoint": { "$ref": "#/$defs/checksum" },
+        "metrics_snapshot": { "type": "object" }
+      },
+      "additionalProperties": false
+    },
+    "payload_run_completed": {
+      "type": "object",
+      "required": [
+        "shard_total",
+        "weights",
+        "embedding_checksum",
+        "config_checksum",
+        "code_checksum"
+      ],
+      "properties": {
+        "shard_total": { "type": "integer", "minimum": 1 },
+        "weights": {
+          "type": "object",
+          "required": ["checksum"],
+          "properties": {
+            "checksum": { "$ref": "#/$defs/checksum" },
+            "artifact_uri": { "type": "string" }
+          },
+          "additionalProperties": false
+        },
+        "embedding_checksum": { "$ref": "#/$defs/checksum" },
+        "config_checksum": { "$ref": "#/$defs/checksum" },
+        "code_checksum": { "$ref": "#/$defs/checksum" },
+        "metrics": { "type": "object" }
+      },
+      "additionalProperties": false
+    },
+    "payload_embedding_published": {
+      "type": "object",
+      "required": ["run_ref", "checksum"],
+      "properties": {
+        "run_ref": { "type": "string", "minLength": 1 },
+        "checksum": { "$ref": "#/$defs/checksum" },
+        "artifact_uri": { "type": "string" },
+        "dimensionality": { "type": "integer", "minimum": 1 },
+        "entities": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "payload_claim_recorded": {
+      "type": "object",
+      "required": ["embedding_ref", "statement", "validation_level", "recorded_by"],
+      "properties": {
+        "embedding_ref": { "type": "string", "minLength": 1 },
+        "statement": {
+          "type": "string",
+          "minLength": 1,
+          "description": "推断主张原文；必须可与嵌入结果、实验验证状态区分开。"
+        },
+        "validation_level": {
+          "const": "exploratory",
+          "description": "新登记主张只能为 exploratory；模型相似性不得直接记为已验证事实。"
+        },
+        "recorded_by": { "type": "string", "minLength": 1 },
+        "caveats": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "payload_claim_validated": {
+      "type": "object",
+      "required": ["new_level", "method", "validated_by", "validated_at", "evidence"],
+      "properties": {
+        "new_level": {
+          "enum": [
+            "computational_replication",
+            "independent_replication",
+            "experimental_validation"
+          ],
+          "description": "验证事件必须把主张提升到 exploratory 以上；逐级提升的规则由登记处强制。"
+        },
+        "method": {
+          "type": "string",
+          "description": "computational / independent_lab / experiment 等具体验证方式。"
+        },
+        "validated_by": {
+          "type": "object",
+          "required": ["lab", "independent"],
+          "properties": {
+            "lab": { "type": "string" },
+            "independent": {
+              "type": "boolean",
+              "description": "验证方是否独立于原始训练实验室。"
+            }
+          },
+          "additionalProperties": false
+        },
+        "validated_at": { "type": "string", "format": "date-time" },
+        "evidence": {
+          "type": "object",
+          "required": ["description"],
+          "properties": {
+            "description": { "type": "string", "minLength": 1 },
+            "artifact_uri": { "type": "string" },
+            "checksum": { "$ref": "#/$defs/checksum" },
+            "experiment_ref": { "type": "string" }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "payload_model_card_published": {
+      "type": "object",
+      "required": [
+        "run_ref",
+        "embedding_ref",
+        "intended_uses",
+        "out_of_scope_uses",
+        "validation_level",
+        "provenance"
+      ],
+      "properties": {
+        "run_ref": { "type": "string", "minLength": 1 },
+        "embedding_ref": { "type": "string", "minLength": 1 },
+        "intended_uses": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1
+        },
+        "out_of_scope_uses": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1
+        },
+        "validation_level": { "$ref": "#/$defs/validation_level" },
+        "provenance": {
+          "type": "object",
+          "required": [
+            "dataset_refs",
+            "vocabulary_ref",
+            "orthology_ref",
+            "config_checksum",
+            "code_checksum",
+            "weights_checksum",
+            "embedding_checksum"
+          ],
+          "properties": {
+            "dataset_refs": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/ref" },
+              "minItems": 1
+            },
+            "vocabulary_ref": { "$ref": "#/$defs/ref" },
+            "orthology_ref": { "$ref": "#/$defs/ref" },
+            "config_checksum": { "$ref": "#/$defs/checksum" },
+            "code_checksum": { "$ref": "#/$defs/checksum" },
+            "weights_checksum": { "$ref": "#/$defs/checksum" },
+            "embedding_checksum": { "$ref": "#/$defs/checksum" }
+          },
+          "additionalProperties": false
+        },
+        "warnings": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "payload_figure_published": {
+      "type": "object",
+      "required": [
+        "title",
+        "run_ref",
+        "embedding_ref",
+        "claim_refs",
+        "provenance",
+        "validation_level"
+      ],
+      "properties": {
+        "title": { "type": "string", "minLength": 1 },
+        "run_ref": { "type": "string", "minLength": 1 },
+        "embedding_ref": { "type": "string", "minLength": 1 },
+        "claim_refs": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "provenance": {
+          "type": "object",
+          "description": "点开图表即可取得的溯源包：词表、同源组、数据、配置、权重、验证等级。",
+          "required": [
+            "analysis_ref",
+            "dataset_refs",
+            "vocabulary_ref",
+            "orthology_ref",
+            "config_checksum",
+            "code_checksum",
+            "weights_checksum",
+            "embedding_checksum"
+          ],
+          "properties": {
+            "analysis_ref": { "type": "string" },
+            "dataset_refs": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/ref" },
+              "minItems": 1
+            },
+            "vocabulary_ref": { "$ref": "#/$defs/ref" },
+            "orthology_ref": { "$ref": "#/$defs/ref" },
+            "config_checksum": { "$ref": "#/$defs/checksum" },
+            "code_checksum": { "$ref": "#/$defs/checksum" },
+            "weights_checksum": { "$ref": "#/$defs/checksum" },
+            "embedding_checksum": { "$ref": "#/$defs/checksum" }
+          },
+          "additionalProperties": false
+        },
+        "validation_level": { "$ref": "#/$defs/validation_level" },
+        "artifact_uri": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "payload_annotation_upgraded": {
+      "type": "object",
+      "required": ["new_ref", "reason"],
+      "properties": {
+        "new_ref": { "$ref": "#/$defs/ref" },
+        "reason": { "type": "string", "minLength": 1 },
+        "affected": { "$ref": "#/$defs/affected_refs" }
+      },
+      "additionalProperties": false
+    },
+    "payload_source_withdrawn": {
+      "type": "object",
+      "required": ["reason", "affected"],
+      "properties": {
+        "reason": { "type": "string", "minLength": 1 },
+        "affected": { "$ref": "#/$defs/affected_refs" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "event_type": { "const": "ANALYSIS_REGISTERED" } }, "required": ["event_type"] },
+      "then": {
+        "properties": {
+          "aggregate_type": { "const": "analysis_registration" },
+          "payload": { "$ref": "#/$defs/payload_analysis_registered" }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "event_type": { "const": "DATASET_REGISTERED" } }, "required": ["event_type"] },
+      "then": {
+        "properties": {
+          "aggregate_type": { "const": "dataset_release" },
+          "payload": { "$ref": "#/$defs/payload_dataset_registered" }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "event_type": { "const": "VOCABULARY_FROZEN" } }, "required": ["event_type"] },
+      "then": {
+        "properties": {
+          "aggregate_type": { "const": "gene_vocabulary" },
+          "payload": { "$ref": "#/$defs/payload_vocabulary_frozen" }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "event_type": { "const": "ORTHOLOGY_FROZEN" } }, "required": ["event_type"] },
+      "then": {
+        "properties": {
+          "aggregate_type": { "const": "orthology_set" },
+          "payload": { "$ref": "#/$defs/payload_orthology_frozen" }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "event_type": { "const": "ACCESS_AUTHORIZED" } }, "required": ["event_type"] },
+      "then": {
+        "properties": {
+          "aggregate_type": { "const": "access_grant" },
+          "payload": { "$ref": "#/$defs/payload_access_authorized" }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "event_type": { "const": "RUN_REGISTERED" } }, "required": ["event_type"] },
+      "then": {
+        "properties": {
+          "aggregate_type": { "const": "model_run" },
+          "payload": { "$ref": "#/$defs/payload_run_registered" }
+        },
+        "required": ["idempotency_key"]
+      }
+    },
+    {
+      "if": { "properties": { "event_type": { "const": "SHARD_PROGRESSED" } }, "required": ["event_type"] },
+      "then": {
+        "properties": {
+          "aggregate_type": { "const": "model_run" },
+          "payload": { "$ref": "#/$defs/payload_shard_progressed" }
+        },
+        "required": ["idempotency_key"]
+      }
+    },
+    {
+      "if": { "properties": { "event_type": { "const": "RUN_COMPLETED" } }, "required": ["event_type"] },
+      "then": {
+        "properties": {
+          "aggregate_type": { "const": "model_run" },
+          "payload": { "$ref": "#/$defs/payload_run_completed" }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "event_type": { "const": "EMBEDDING_PUBLISHED" } }, "required": ["event_type"] },
+      "then": {
+        "properties": {
+          "aggregate_type": { "const": "embedding_output" },
+          "payload": { "$ref": "#/$defs/payload_embedding_published" }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "event_type": { "const": "CLAIM_RECORDED" } }, "required": ["event_type"] },
+      "then": {
+        "properties": {
+          "aggregate_type": { "const": "biological_claim" },
+          "payload": { "$ref": "#/$defs/payload_claim_recorded" }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "event_type": { "const": "CLAIM_VALIDATED" } }, "required": ["event_type"] },
+      "then": {
+        "properties": {
+          "aggregate_type": { "const": "biological_claim" },
+          "payload": { "$ref": "#/$defs/payload_claim_validated" }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "event_type": { "const": "MODEL_CARD_PUBLISHED" } }, "required": ["event_type"] },
+      "then": {
+        "properties": {
+          "aggregate_type": { "const": "model_card" },
+          "payload": { "$ref": "#/$defs/payload_model_card_published" }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "event_type": { "const": "FIGURE_PUBLISHED" } }, "required": ["event_type"] },
+      "then": {
+        "properties": {
+          "aggregate_type": { "const": "figure" },
+          "payload": { "$ref": "#/$defs/payload_figure_published" }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "event_type": { "const": "ANNOTATION_UPGRADED" } }, "required": ["event_type"] },
+      "then": {
+        "properties": {
+          "aggregate_type": { "enum": ["gene_vocabulary", "orthology_set"] },
+          "payload": { "$ref": "#/$defs/payload_annotation_upgraded" }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "event_type": { "const": "SOURCE_WITHDRAWN" } }, "required": ["event_type"] },
+      "then": {
+        "properties": {
+          "aggregate_type": { "const": "dataset_release" },
+          "payload": { "$ref": "#/$defs/payload_source_withdrawn" }
+        }
+      }
+    }
+  ]
 }

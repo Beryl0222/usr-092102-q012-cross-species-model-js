@@ -1,10 +1,11 @@
 {
   "name": "cross-species-cell-model",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
-  "description": "领域事件基础校验",
+  "description": "跨物种细胞模型：先登记再引用的事件溯源、复现锁定与模型卡/图表溯源",
   "scripts": {
-    "test": "node --test"
+    "test": "node --test",
+    "example": "node examples/cross-species-figure.js"
   }
 }

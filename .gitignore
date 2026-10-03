@@ -7,3 +7,6 @@ __pycache__/
 *.py[cod]
 dist/
 coverage/
+
+# 示例脚本生成的模型卡与溯源包
+examples/output/

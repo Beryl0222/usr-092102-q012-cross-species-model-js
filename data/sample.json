@@ -1,9 +1,35 @@
 {
-  "event_id": "092102-012-sample-001",
+  "event_id": "evt-sample-000001",
   "event_type": "DATASET_REGISTERED",
   "aggregate_type": "dataset_release",
-  "aggregate_id": "cross_species_cell_model-001",
+  "aggregate_id": "dataset-sample-0001",
   "occurred_at": "2026-09-20T12:00:00+08:00",
   "version": 1,
-  "summary": "跨物种细胞模型登记领域样例"
+  "summary": "数据集登记样例：人类外周血单个核细胞（受控访问）",
+  "payload": {
+    "lab": "人类细胞图谱合作中心-示范实验室",
+    "species": {
+      "scientific_name": "Homo sapiens",
+      "common_name": "人类",
+      "taxonomy_id": "NCBI:9606"
+    },
+    "tissue": "外周血单个核细胞",
+    "sample_consent": "controlled_access",
+    "human_subject": true,
+    "access_tier": "controlled",
+    "access_restrictions": [
+      "仅授权项目可用",
+      "禁止个体层面数据导出",
+      "禁止流向无授权项目"
+    ],
+    "quality_control": {
+      "passed": true,
+      "checks": ["供体去标识化复核", "每簇细胞数≥800", "doublet 比例<3%"]
+    },
+    "source_uri": "s3://cell-atlas-demo/human-pbmc-sample",
+    "checksum": {
+      "algorithm": "sha256",
+      "value": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  }
 }
