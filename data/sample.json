@@ -1,9 +1,32 @@
 {
-  "event_id": "092102-012-sample-001",
+  "event_id": "01J9S0DOMAIN-SAMPLE-0001",
   "event_type": "DATASET_REGISTERED",
   "aggregate_type": "dataset_release",
-  "aggregate_id": "cross_species_cell_model-001",
+  "aggregate_id": "dataset-sponge-amphimedon-001",
   "occurred_at": "2026-09-20T12:00:00+08:00",
   "version": 1,
-  "summary": "跨物种细胞模型登记领域样例"
+  "summary": "登记海绵细胞数据集（开放层）",
+  "correlation_id": "cross-species-embedding-2026-09",
+  "actor": { "agent": "li.researcher", "lab": "海洋比较生物学实验室" },
+  "payload": {
+    "lab": "海洋比较生物学实验室",
+    "tissue": "成体中胶层解离细胞",
+    "species": "Amphimedon queenslandica",
+    "human_raw_data": false,
+    "consent": {
+      "basis": "broad",
+      "secondary_use": true,
+      "documents": ["MTA-2026-031"]
+    },
+    "quality_control": {
+      "status": "passed",
+      "checks": ["doublet_removal", "min_genes_500", "mito_frac_lt_10pct"]
+    },
+    "access": {
+      "tier": "open",
+      "restrictions": []
+    },
+    "source_uri": "s3://registry/datasets/sponge-001.h5ad",
+    "content_sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+  }
 }

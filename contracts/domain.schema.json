@@ -1,6 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "跨物种细胞模型登记领域事件",
+  "$id": "https://registry.example.com/contracts/domain.schema.json",
+  "title": "跨物种细胞模型登记 · 统一领域事件信封",
+  "description": "所有跨物种分析流程（登记、冻结、授权、训练、嵌入、主张、验证、撤回/升级、发布）都以本信封承接。信封字段只增不改；业务细节放入 payload。",
   "type": "object",
   "required": [
     "event_id",
@@ -9,21 +11,34 @@
     "aggregate_id",
     "occurred_at",
     "version",
-    "summary"
+    "summary",
+    "payload"
   ],
   "properties": {
     "event_id": {
       "type": "string",
-      "minLength": 1
+      "minLength": 1,
+      "description": "事件全局唯一标识（ULID/UUID），重放与去重的最终依据。"
     },
     "event_type": {
       "type": "string",
       "enum": [
         "DATASET_REGISTERED",
         "VOCABULARY_FROZEN",
+        "ORTHOLOG_FROZEN",
+        "ACCESS_GRANTED",
+        "RUN_REGISTERED",
+        "CHECKPOINT_RECORDED",
         "RUN_COMPLETED",
+        "RUN_FAILED",
+        "EMBEDDING_PUBLISHED",
+        "CLAIM_RECORDED",
         "CLAIM_VALIDATED",
-        "SOURCE_WITHDRAWN"
+        "CLAIM_DEMOTED",
+        "SOURCE_WITHDRAWN",
+        "ANNOTATION_UPGRADED",
+        "FIGURE_PUBLISHED",
+        "MODEL_CARD_PUBLISHED"
       ]
     },
     "aggregate_type": {
@@ -31,8 +46,13 @@
       "enum": [
         "dataset_release",
         "gene_vocabulary",
+        "ortholog_set",
+        "access_grant",
         "model_run",
-        "biological_claim"
+        "embedding",
+        "biological_claim",
+        "figure",
+        "model_card"
       ]
     },
     "aggregate_id": {
@@ -45,12 +65,340 @@
     },
     "version": {
       "type": "integer",
-      "minimum": 1
+      "minimum": 1,
+      "description": "该聚合流内从 1 起单调递增的版本号（乐观并发）。"
     },
     "summary": {
       "type": "string",
       "minLength": 1
+    },
+    "idempotency_key": {
+      "type": "string",
+      "minLength": 1,
+      "description": "客户端生成的幂等键。训练回调等重复投递携带相同键时不产生第二个运行/事件。"
+    },
+    "causation_id": {
+      "type": "string",
+      "description": "触发本事件的前一事件/命令 id。"
+    },
+    "correlation_id": {
+      "type": "string",
+      "description": "贯穿一次分析全流程的相关 id，可串起数据集→运行→嵌入→主张→图表。"
+    },
+    "actor": {
+      "type": "object",
+      "description": "事件提交方（实验室/研究者/服务账号）。",
+      "required": ["agent"],
+      "properties": {
+        "agent": { "type": "string", "minLength": 1 },
+        "lab": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "payload": {
+      "type": "object",
+      "description": "事件负载，不同 event_type 的必需字段见各条件分支。"
     }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "allOf": [
+    {
+      "if": { "properties": { "event_type": { "const": "DATASET_REGISTERED" } }, "required": ["event_type"] },
+      "then": {
+        "properties": {
+          "aggregate_type": { "const": "dataset_release" },
+          "payload": {
+            "required": ["lab", "tissue", "species", "consent", "quality_control", "access"],
+            "properties": {
+              "lab": { "type": "string", "minLength": 1 },
+              "tissue": { "type": "string", "minLength": 1 },
+              "species": { "type": "string", "minLength": 1 },
+              "human_raw_data": { "type": "boolean" },
+              "consent": {
+                "type": "object",
+                "required": ["basis", "secondary_use"],
+                "properties": {
+                  "basis": { "type": "string", "enum": ["explicit", "broad", "tiered", "unknown"] },
+                  "secondary_use": { "type": "boolean" },
+                  "documents": { "type": "array", "items": { "type": "string" } }
+                }
+              },
+              "quality_control": {
+                "type": "object",
+                "required": ["status", "checks"],
+                "properties": {
+                  "status": { "type": "string", "enum": ["passed", "flagged", "failed"] },
+                  "checks": { "type": "array", "items": { "type": "string" } },
+                  "notes": { "type": "string" }
+                }
+              },
+              "access": {
+                "type": "object",
+                "required": ["tier", "restrictions"],
+                "properties": {
+                  "tier": { "type": "string", "enum": ["open", "controlled", "restricted"] },
+                  "restrictions": { "type": "array", "items": { "type": "string" } }
+                }
+              },
+              "source_uri": { "type": "string" },
+              "content_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "event_type": { "const": "VOCABULARY_FROZEN" } }, "required": ["event_type"] },
+      "then": {
+        "properties": {
+          "aggregate_type": { "const": "gene_vocabulary" },
+          "payload": {
+            "required": ["name", "version", "content_sha256"],
+            "properties": {
+              "name": { "type": "string", "minLength": 1 },
+              "version": { "type": "string", "minLength": 1 },
+              "content_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+              "source_uri": { "type": "string" },
+              "entry_count": { "type": "integer", "minimum": 0 }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "event_type": { "const": "ORTHOLOG_FROZEN" } }, "required": ["event_type"] },
+      "then": {
+        "properties": {
+          "aggregate_type": { "const": "ortholog_set" },
+          "payload": {
+            "required": ["name", "version", "content_sha256", "species_covered"],
+            "properties": {
+              "name": { "type": "string", "minLength": 1 },
+              "version": { "type": "string", "minLength": 1 },
+              "content_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+              "source_uri": { "type": "string" },
+              "species_covered": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+              "group_count": { "type": "integer", "minimum": 0 }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "event_type": { "const": "ACCESS_GRANTED" } }, "required": ["event_type"] },
+      "then": {
+        "properties": {
+          "aggregate_type": { "const": "access_grant" },
+          "payload": {
+            "required": ["dataset_id", "project_id", "scope", "granted_by"],
+            "properties": {
+              "dataset_id": { "type": "string", "minLength": 1 },
+              "project_id": { "type": "string", "minLength": 1 },
+              "scope": { "type": "string", "enum": ["metadata", "derivatives", "raw"] },
+              "granted_by": { "type": "string", "minLength": 1 },
+              "expires_at": { "type": "string", "format": "date-time" },
+              "embargo_until": { "type": "string", "format": "date-time" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "event_type": { "const": "RUN_REGISTERED" } }, "required": ["event_type"] },
+      "then": {
+        "properties": {
+          "aggregate_type": { "const": "model_run" },
+          "payload": {
+            "required": ["project_id", "dataset_ids", "vocabulary_id", "ortholog_set_id", "training", "embargo_until"],
+            "properties": {
+              "project_id": { "type": "string" },
+              "dataset_ids": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+              "vocabulary_id": { "type": "string" },
+              "ortholog_set_id": { "type": "string" },
+              "training": {
+                "type": "object",
+                "required": ["config_sha256", "code_sha256", "weights_sha256", "shard_count"],
+                "properties": {
+                  "config_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+                  "code_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+                  "weights_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$|^pending$" },
+                  "shard_count": { "type": "integer", "minimum": 1 },
+                  "resume_from_run": { "type": "string" }
+                }
+              },
+              "embargo_until": { "type": "string", "format": "date-time" },
+              "expected_species": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "event_type": { "const": "CHECKPOINT_RECORDED" } }, "required": ["event_type"] },
+      "then": {
+        "properties": {
+          "aggregate_type": { "const": "model_run" },
+          "payload": {
+            "required": ["shard_index", "shard_count", "checkpoint_sha256"],
+            "properties": {
+              "shard_index": { "type": "integer", "minimum": 0 },
+              "shard_count": { "type": "integer", "minimum": 1 },
+              "checkpoint_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+              "metrics": { "type": "object" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "event_type": { "enum": ["RUN_COMPLETED", "RUN_FAILED"] } }, "required": ["event_type"] },
+      "then": {
+        "properties": {
+          "aggregate_type": { "const": "model_run" },
+          "payload": {
+            "required": ["final_weights_sha256"],
+            "properties": {
+              "final_weights_sha256": { "type": "string" },
+              "metrics": { "type": "object" },
+              "reason": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "event_type": { "const": "EMBEDDING_PUBLISHED" } }, "required": ["event_type"] },
+      "then": {
+        "properties": {
+          "aggregate_type": { "const": "embedding" },
+          "payload": {
+            "required": ["run_id", "artifact_sha256", "status"],
+            "properties": {
+              "run_id": { "type": "string" },
+              "artifact_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+              "status": { "type": "string", "enum": ["exploratory", "frozen"] },
+              "species_covered": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "event_type": { "const": "CLAIM_RECORDED" } }, "required": ["event_type"] },
+      "then": {
+        "properties": {
+          "aggregate_type": { "const": "biological_claim" },
+          "payload": {
+            "required": ["run_id", "statement", "status"],
+            "properties": {
+              "run_id": { "type": "string" },
+              "embedding_id": { "type": "string" },
+              "statement": { "type": "string", "minLength": 1 },
+              "status": {
+                "type": "string",
+                "enum": ["exploratory_hint", "proposed"],
+                "description": "记录时只能是探索线索或待验证推断；validated/refuted/withdrawn 只能经后续事件到达。嵌入结果、推断主张、实验验证不得混为同一状态。"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "event_type": { "const": "CLAIM_VALIDATED" } }, "required": ["event_type"] },
+      "then": {
+        "properties": {
+          "aggregate_type": { "const": "biological_claim" },
+          "payload": {
+            "required": ["validation_level", "evidence"],
+            "properties": {
+              "validation_level": {
+                "type": "string",
+                "enum": ["in_silico_reproduction", "independent_dataset", "wetlab_independent", "wetlab_preregistered"]
+              },
+              "evidence": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+              "validated_by": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "event_type": { "const": "CLAIM_DEMOTED" } }, "required": ["event_type"] },
+      "then": {
+        "properties": {
+          "aggregate_type": { "const": "biological_claim" },
+          "payload": {
+            "required": ["to_status", "reason"],
+            "properties": {
+              "to_status": { "type": "string", "enum": ["exploratory_hint", "proposed", "refuted"] },
+              "reason": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "event_type": { "enum": ["SOURCE_WITHDRAWN", "ANNOTATION_UPGRADED"] } }, "required": ["event_type"] },
+      "then": {
+        "properties": {
+          "payload": {
+            "required": ["target_type", "target_id", "reason"],
+            "properties": {
+              "target_type": { "type": "string", "enum": ["dataset_release", "gene_vocabulary", "ortholog_set"] },
+              "target_id": { "type": "string" },
+              "reason": { "type": "string" },
+              "new_version_id": { "type": "string" },
+              "affected_run_ids": { "type": "array", "items": { "type": "string" }, "description": "登记时已知受影响运行；投影会再按血缘补全。" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "event_type": { "const": "FIGURE_PUBLISHED" } }, "required": ["event_type"] },
+      "then": {
+        "properties": {
+          "aggregate_type": { "const": "figure" },
+          "payload": {
+            "required": ["run_ids", "vocabulary_id", "ortholog_set_id", "dataset_ids", "claim_ids", "provenance"],
+            "properties": {
+              "run_ids": { "type": "array", "items": { "type": "string" } },
+              "vocabulary_id": { "type": "string" },
+              "ortholog_set_id": { "type": "string" },
+              "dataset_ids": { "type": "array", "items": { "type": "string" } },
+              "claim_ids": { "type": "array", "items": { "type": "string" } },
+              "embedding_ids": { "type": "array", "items": { "type": "string" } },
+              "provenance": { "type": "boolean", "const": true, "description": "必须为 true：图表发布即承诺可点开溯源。" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "event_type": { "const": "MODEL_CARD_PUBLISHED" } }, "required": ["event_type"] },
+      "then": {
+        "properties": {
+          "aggregate_type": { "const": "model_card" },
+          "payload": {
+            "required": ["run_id", "reproducibility", "validation_summary", "applicability"],
+            "properties": {
+              "run_id": { "type": "string" },
+              "reproducibility": { "type": "object" },
+              "validation_summary": { "type": "object" },
+              "applicability": {
+                "type": "object",
+                "required": ["species_scope", "known_limits"],
+                "properties": {
+                  "species_scope": { "type": "array", "items": { "type": "string" } },
+                  "tissue_scope": { "type": "array", "items": { "type": "string" } },
+                  "known_limits": { "type": "array", "items": { "type": "string" }, "minItems": 1 }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
 }

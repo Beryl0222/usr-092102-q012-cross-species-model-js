@@ -3,8 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "领域事件基础校验",
+  "description": "跨物种细胞模型登记：统一事件信封、来源溯源与模型卡",
   "scripts": {
-    "test": "node --test"
+    "test": "node --test",
+    "demo": "node examples/demo.mjs"
   }
 }
